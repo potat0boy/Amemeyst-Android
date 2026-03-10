@@ -71,6 +71,13 @@
         <item>Prefer MultiDraw Indirect</item>
         <item>Force DrawElements</item>
     </string-array>
+    <string-array name="turnip_files">
+    <item>System Default</item>
+</string-array>
+<string-array name="turnip_values">
+    <item>default</item>
+</string-array>
+    
     <string-array name="mg_renderer_values_multidraw">
         <item>0</item>
         <item>1</item>
