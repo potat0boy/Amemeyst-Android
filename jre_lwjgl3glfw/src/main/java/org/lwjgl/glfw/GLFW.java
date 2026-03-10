@@ -1047,6 +1047,10 @@ public class GLFW
         nglfwSetShowingWindow(mGLFWWindowMap.size() == 0 ? 0 : mGLFWWindowMap.keyAt(mGLFWWindowMap.size() - 1));
     }
 
+    public static String glfwGetWindowTitle(long window) {
+        return internalGetWindow(window).title;
+    }
+
     public static void glfwDefaultWindowHints() {
         mGLFWWindowVisibleOnCreation = true;
     }
