@@ -8,8 +8,8 @@ import android.content.res.Resources;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.kdt.pojavlaunch.firefly.Tools;
-import net.kdt.pojavlaunch.firefly.R;
+import net.kdt.pojavlaunch.Tools;
+import net.kdt.pojavlaunch.R;
 
 import com.movtery.plugins.renderer.RendererPlugin;
 
