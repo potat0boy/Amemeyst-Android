@@ -1048,7 +1048,7 @@ public class GLFW
     }
 
     public static String glfwGetWindowTitle(long window) {
-        return internalGetWindow(window).title;
+        return internalGetWindow(window).title.toString();
     }
 
     public static void glfwDefaultWindowHints() {
