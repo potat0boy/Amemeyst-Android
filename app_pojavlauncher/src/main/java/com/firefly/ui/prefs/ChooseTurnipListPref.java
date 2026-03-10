@@ -15,7 +15,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.preference.ListPreference;
 
-import net.kdt.pojavlaunch.firefly.R;
+import net.kdt.pojavlaunch.R;
 
 import com.firefly.ui.dialog.CustomDialog;
 import com.firefly.utils.ListUtils;
