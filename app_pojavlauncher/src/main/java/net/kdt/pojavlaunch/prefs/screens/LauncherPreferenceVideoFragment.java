@@ -45,6 +45,15 @@ public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment 
         requirePreference("alternate_surface", SwitchPreferenceCompat.class).setChecked(LauncherPreferences.PREF_USE_ALTERNATE_SURFACE);
         requirePreference("force_vsync", SwitchPreferenceCompat.class).setChecked(LauncherPreferences.PREF_FORCE_VSYNC);
 
+        // --- Turnip Driver Implementation ---
+        ListPreference turnipPref = findPreference("chooseTurnipDriver");
+        if (turnipPref != null) {
+            // Check for Adreno GPU since Turnip is specific to Qualcomm
+            String renderer = android.opengl.GLES20.glGetString(android.opengl.GLES20.GL_RENDERER);
+            boolean isAdreno = renderer != null && renderer.contains("Adreno");
+            turnipPref.setVisible(isAdreno);
+        }
+
         computeVisibility();
     }
 
@@ -57,5 +66,12 @@ public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment 
     private void computeVisibility(){
         requirePreference("force_vsync", SwitchPreferenceCompat.class)
                 .setVisible(LauncherPreferences.PREF_USE_ALTERNATE_SURFACE);
+        
+        // Ensure Turnip stays hidden on non-Adreno even during updates
+        ListPreference turnipPref = findPreference("chooseTurnipDriver");
+        if (turnipPref != null) {
+            String renderer = android.opengl.GLES20.glGetString(android.opengl.GLES20.GL_RENDERER);
+            turnipPref.setVisible(renderer != null && renderer.contains("Adreno"));
+        }
     }
 }
