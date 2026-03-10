@@ -12,6 +12,15 @@
             android:fragment="net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceRendererSettingsFragment"
             />
 
+        <ListPreference
+    android:key="chooseTurnipDriver"
+    android:title="Turnip Driver"
+    android:summary="%s"
+    android:entries="@array/turnip_files"
+    android:entryValues="@array/turnip_values"
+    android:defaultValue="default" 
+            />
+
         <androidx.preference.SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="ignoreNotch"
