@@ -30,8 +30,8 @@ public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment 
         resolutionSeekbar.setSuffix(" %");
 
         // #724 bug fix
-        if (resolution < 25) {
-            resolutionSeekbar.setValue(100);
+        if (resolution < 15) {
+            resolutionSeekbar.setValue(67);
         } else {
             resolutionSeekbar.setValue(resolution);
         }
