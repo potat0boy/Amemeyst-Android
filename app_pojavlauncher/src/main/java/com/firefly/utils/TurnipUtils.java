@@ -3,8 +3,8 @@ package com.firefly.utils;
 import android.content.Context;
 import android.net.Uri;
 
-import net.kdt.pojavlaunch.firefly.Tools;
-import net.kdt.pojavlaunch.firefly.R;
+import net.kdt.pojavlaunch.Tools;
+import net.kdt.pojavlaunch.R;
 
 import java.io.File;
 import java.io.FileOutputStream;
