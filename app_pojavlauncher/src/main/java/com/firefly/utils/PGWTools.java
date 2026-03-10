@@ -16,7 +16,7 @@ import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import net.kdt.pojavlaunch.firefly.Logger;
+import net.kdt.pojavlaunch.Logger;
 
 import org.jetbrains.annotations.Nullable;
 
