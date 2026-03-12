@@ -12,7 +12,7 @@
             android:fragment="net.kdt.pojavlaunch.prefs.screens.LauncherPreferenceRendererSettingsFragment"
             />
 
-        <com.firefly.ui.prefs.ChooseTurnipListPref
+        <ListPreference
             android:key="chooseTurnipDriver"
             android:title="Turnip Driver"
             android:summary="%s"
