@@ -92,7 +92,8 @@ public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment 
     private void importDriver(Uri uri) {
         try {
             // Create the custom driver directory in internal storage
-            File turnipDir = new File(PojavApplication.Context.getFilesDir(), "turnip");
+            File turnipDir = new File(getContext().getFilesDir(), "turnip");
+
             if (!turnipDir.exists()) turnipDir.mkdirs();
 
             File destFile = new File(turnipDir, "libvulkan_freedreno.so");
