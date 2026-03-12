@@ -24,6 +24,11 @@
             android:title="Import Custom Driver"
             android:summary="Add a new .so driver file to the list" />
 
+        <Preference
+            android:key="deleteTurnipDriver"
+            android:title="Delete Current Driver"
+            android:summary="Remove the driver currently selected from storage" />
+
         <androidx.preference.SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="ignoreNotch"
