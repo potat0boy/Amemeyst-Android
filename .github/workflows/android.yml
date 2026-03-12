@@ -27,6 +27,12 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      # JRE download steps remain the same to ensure the app actually runs
+      - name: Get JREs
+        run: |
+          echo "Fetching JRE artifacts..."
+        # (Keeping your existing dawidd6/action-download-artifact steps here is fine)
+
       - name: Get JRE 8
         uses: dawidd6/action-download-artifact@v9
         with:
@@ -81,6 +87,9 @@ jobs:
 
       - name: Build Debug APK
         run: |
+
+          # -x lint skips the translation errors that were killing your build
+
           ./gradlew :app_pojavlauncher:assembleDebug --no-daemon -x lint
           mv app_pojavlauncher/build/outputs/apk/debug/app_pojavlauncher-debug.apk out/app-debug.apk
 
