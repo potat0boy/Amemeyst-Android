@@ -1,22 +1,35 @@
 package net.kdt.pojavlaunch.prefs.screens;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.widget.Toast;
 
 import androidx.preference.ListPreference;
+import androidx.preference.Preference;
 import androidx.preference.SwitchPreference;
 import androidx.preference.SwitchPreferenceCompat;
 
+import net.kdt.pojavlaunch.PojavApplication;
 import net.kdt.pojavlaunch.R;
 import net.kdt.pojavlaunch.Tools;
 import net.kdt.pojavlaunch.prefs.CustomSeekBarPreference;
 import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 /**
  * Fragment for any settings video related
  */
 public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment {
+    private static final int PICK_DRIVER_REQUEST = 1001;
+
     @Override
     public void onCreatePreferences(Bundle b, String str) {
         addPreferencesFromResource(R.xml.pref_video);
@@ -46,13 +59,61 @@ public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment 
         requirePreference("force_vsync", SwitchPreferenceCompat.class).setChecked(LauncherPreferences.PREF_FORCE_VSYNC);
 
         // --- Turnip Driver Implementation ---
-        // Always visible as requested
         ListPreference turnipPref = findPreference("chooseTurnipDriver");
         if (turnipPref != null) {
             turnipPref.setVisible(true);
         }
 
+        // Handle the "Import" button
+        Preference importBtn = findPreference("importTurnipDriver");
+        if (importBtn != null) {
+            importBtn.setOnPreferenceClickListener(preference -> {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("application/octet-stream"); // Filters for binary files like .so
+                startActivityForResult(intent, PICK_DRIVER_REQUEST);
+                return true;
+            });
+        }
+
         computeVisibility();
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_DRIVER_REQUEST && resultCode == Activity.RESULT_OK && data != null) {
+            Uri uri = data.getData();
+            if (uri != null) {
+                importDriver(uri);
+            }
+        }
+    }
+
+    private void importDriver(Uri uri) {
+        try {
+            // Create the custom driver directory in internal storage
+            File turnipDir = new File(PojavApplication.Context.getFilesDir(), "turnip");
+            if (!turnipDir.exists()) turnipDir.mkdirs();
+
+            File destFile = new File(turnipDir, "libvulkan_freedreno.so");
+
+            InputStream in = requireContext().getContentResolver().openInputStream(uri);
+            OutputStream out = new FileOutputStream(destFile);
+
+            byte[] buf = new byte[1024];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+
+            in.close();
+            out.close();
+
+            Toast.makeText(getContext(), "Driver imported to internal storage!", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            android.util.Log.e("TurnipImport", "Failed to copy driver", e);
+            Toast.makeText(getContext(), "Failed to import driver", Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override
@@ -65,7 +126,6 @@ public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment 
         requirePreference("force_vsync", SwitchPreferenceCompat.class)
                 .setVisible(LauncherPreferences.PREF_USE_ALTERNATE_SURFACE);
         
-        // Ensure Turnip stays visible during UI refreshes
         ListPreference turnipPref = findPreference("chooseTurnipDriver");
         if (turnipPref != null) {
             turnipPref.setVisible(true);
