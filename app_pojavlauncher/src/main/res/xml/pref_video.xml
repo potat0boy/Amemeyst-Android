@@ -16,15 +16,13 @@
             android:key="chooseTurnipDriver"
             android:title="Turnip Driver"
             android:summary="%s"
-            android:entries="@array/turnip_files"
-            android:entryValues="@array/turnip_values"
             android:defaultValue="default" 
             android:icon="@drawable/ic_setting_engine" />
 
         <Preference
             android:key="importTurnipDriver"
             android:title="Import Custom Driver"
-            android:summary="Replace the existing Turnip driver with your own .so file" />
+            android:summary="Add a new .so driver file to the list" />
 
         <androidx.preference.SwitchPreferenceCompat
             android:defaultValue="false"
