@@ -1709,6 +1709,7 @@ public final class Tools {
         return currentProfile == null || currentProfile.isLocal();
     }
     public static boolean hasOnlineProfile(){
+
                         return true;
     }
 
