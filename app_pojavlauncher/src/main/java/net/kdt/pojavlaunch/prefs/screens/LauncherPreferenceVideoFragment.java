@@ -36,6 +36,7 @@ public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment 
         setupBasicPrefs();
         reloadTurnipDrivers();
 
+        // Import Button logic
         Preference importBtn = findPreference("importTurnipDriver");
         if (importBtn != null) {
             importBtn.setOnPreferenceClickListener(preference -> {
@@ -45,6 +46,16 @@ public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment 
                 return true;
             });
         }
+
+        // Delete Button logic
+        Preference deleteBtn = findPreference("deleteTurnipDriver");
+        if (deleteBtn != null) {
+            deleteBtn.setOnPreferenceClickListener(preference -> {
+                deleteCurrentDriver();
+                return true;
+            });
+        }
+        
         computeVisibility();
     }
 
@@ -77,7 +88,6 @@ public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment 
             File[] files = turnipDir.listFiles((dir, name) -> name.endsWith(".so"));
             if (files != null) {
                 for (File file : files) {
-                    // Show the name without the .so extension in the UI for a cleaner look
                     entries.add(file.getName().replace(".so", ""));
                     entryValues.add(file.getAbsolutePath());
                 }
@@ -87,6 +97,29 @@ public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment 
         turnipPref.setEntries(entries.toArray(new CharSequence[0]));
         turnipPref.setEntryValues(entryValues.toArray(new CharSequence[0]));
         if (turnipPref.getValue() == null) turnipPref.setValue("default");
+    }
+
+    private void deleteCurrentDriver() {
+        ListPreference turnipPref = findPreference("chooseTurnipDriver");
+        if (turnipPref == null) return;
+
+        String currentValue = turnipPref.getValue();
+
+        // Safeguard: Don't let them delete the default
+        if (currentValue == null || currentValue.equals("default")) {
+            Toast.makeText(getContext(), "Cannot delete the default driver!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        File fileToDelete = new File(currentValue);
+        if (fileToDelete.exists() && fileToDelete.delete()) {
+            Toast.makeText(getContext(), "Driver deleted", Toast.LENGTH_SHORT).show();
+            // Revert to default
+            turnipPref.setValue("default");
+            reloadTurnipDrivers();
+        } else {
+            Toast.makeText(getContext(), "Failed to delete file", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -101,13 +134,8 @@ public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment 
     private void showNamingDialog(Uri uri) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setTitle("Name your driver");
-        
         final EditText input = new EditText(getContext());
         input.setHint("e.g. Turnip-v24.1");
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.MATCH_PARENT);
-        input.setLayoutParams(lp);
         builder.setView(input);
 
         builder.setPositiveButton("Save", (dialog, which) -> {
@@ -116,7 +144,6 @@ public class LauncherPreferenceVideoFragment extends LauncherPreferenceFragment 
             saveDriverFile(uri, name + ".so");
         });
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
-
         builder.show();
     }
 
