@@ -170,8 +170,14 @@ public class JREUtils {
         LD_LIBRARY_PATH = ldLibraryPath.toString();
     }
 
-    public static void setJavaEnvironment(Activity activity, String jreHome) throws Throwable {
+    public static void setJavaEnvironment(Activity activity, String jreHome, Map<String, String> env) throws Throwable {
         Map<String, String> envMap = new ArrayMap<>();
+        
+        // Add the map passed from Tools.java first
+        if (env != null) {
+            envMap.putAll(env);
+        }
+
         envMap.put("POJAV_NATIVEDIR", NATIVE_LIB_DIR);
         envMap.put("JAVA_HOME", jreHome);
         envMap.put("HOME", Tools.DIR_GAME_HOME);
@@ -260,10 +266,10 @@ public class JREUtils {
 
         readCustomEnv(envMap); // Must be last so it overrides anything the user sets for obvious reasons.
 
-        for (Map.Entry<String, String> env : envMap.entrySet()) {
-            Logger.appendToLog("Added custom env: " + env.getKey() + "=" + env.getValue());
+        for (Map.Entry<String, String> entry : envMap.entrySet()) {
+            Logger.appendToLog("Added custom env: " + entry.getKey() + "=" + entry.getValue());
             try {
-                Os.setenv(env.getKey(), env.getValue(), true);
+                Os.setenv(entry.getKey(), entry.getValue(), true);
             }catch (NullPointerException exception){
                 Log.e("JREUtils", exception.toString());
             }
@@ -286,17 +292,20 @@ public class JREUtils {
             while ((line = reader.readLine()) != null) {
                 // Not use split() as only split first one
                 int index = line.indexOf("=");
-                envMap.put(line.substring(0, index), line.substring(index + 1));
+                if (index != -1) {
+                    envMap.put(line.substring(0, index), line.substring(index + 1));
+                }
             }
             reader.close();
         }
     }
-    public static void launchJavaVM(final AppCompatActivity activity, final Runtime runtime, File gameDirectory, final List<String> JVMArgs, final String userArgsString) throws Throwable {
+    
+    public static void launchJavaVM(final AppCompatActivity activity, final Runtime runtime, File gameDirectory, final List<String> JVMArgs, final String userArgsString, Map<String, String> env) throws Throwable {
         String runtimeHome = MultiRTUtils.getRuntimeHome(runtime.name).getAbsolutePath();
 
         JREUtils.relocateLibPath(runtime, runtimeHome);
 
-        setJavaEnvironment(activity, runtimeHome);
+        setJavaEnvironment(activity, runtimeHome, env);
 
         final String graphicsLib = loadGraphicsLibrary();
         List<String> userArgs = getJavaArgs(activity, runtimeHome, userArgsString);
@@ -353,8 +362,8 @@ public class JREUtils {
     }
 
     /**
-     *  Gives an argument list filled with both the user args
-     *  and the auto-generated ones (eg. the window resolution).
+     * Gives an argument list filled with both the user args
+     * and the auto-generated ones (eg. the window resolution).
      * @param ctx The application context
      * @return A list filled with args.
      */
