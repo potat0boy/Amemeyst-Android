@@ -170,10 +170,13 @@ public class JREUtils {
         LD_LIBRARY_PATH = ldLibraryPath.toString();
     }
 
+    public static void setJavaEnvironment(Activity activity, String jreHome) throws Throwable {
+        setJavaEnvironment(activity, jreHome, null);
+    }
+
     public static void setJavaEnvironment(Activity activity, String jreHome, Map<String, String> env) throws Throwable {
         Map<String, String> envMap = new ArrayMap<>();
-        
-        // Add the map passed from Tools.java first
+
         if (env != null) {
             envMap.putAll(env);
         }
@@ -299,7 +302,11 @@ public class JREUtils {
             reader.close();
         }
     }
-    
+
+    public static void launchJavaVM(final AppCompatActivity activity, final Runtime runtime, File gameDirectory, final List<String> JVMArgs, final String userArgsString) throws Throwable {
+        launchJavaVM(activity, runtime, gameDirectory, JVMArgs, userArgsString, null);
+    }
+
     public static void launchJavaVM(final AppCompatActivity activity, final Runtime runtime, File gameDirectory, final List<String> JVMArgs, final String userArgsString, Map<String, String> env) throws Throwable {
         String runtimeHome = MultiRTUtils.getRuntimeHome(runtime.name).getAbsolutePath();
 
