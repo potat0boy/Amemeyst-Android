@@ -116,22 +116,26 @@ public final class Tools {
 
     public static final String URL_HOME = "https://wiki.angelauramc.dev";
     public static String NATIVE_LIB_DIR;
-    public static String DIR_DATA; 
+    public static String DIR_DATA; //Initialized later to get context
     public static File DIR_CACHE;
     public static String MULTIRT_HOME;
     public static String LOCAL_RENDERER = null;
     public static int DEVICE_ARCHITECTURE;
     public static final String LAUNCHERPROFILES_RTPREFIX = "amethyst://";
 
+    // New constants for Turnip Driver implementation
     public static String TURNIP_DIR;
 
+    // New since 3.3.1
     public static String DIR_ACCOUNT_NEW;
     public static String DIR_GAME_HOME = Environment.getExternalStorageDirectory().getAbsolutePath() + "/games/Amethyst";
     public static String DIR_GAME_NEW;
     public static String GAME_PROFILES_FILE;
 
+    // New since 3.0.0
     public static String DIRNAME_HOME_JRE = "lib";
 
+    // New since 2.4.2
     public static String DIR_HOME_VERSION;
     public static String DIR_HOME_LIBRARY;
 
@@ -172,6 +176,8 @@ public final class Tools {
         MULTIRT_HOME = DIR_DATA + "/runtimes";
         DIR_ACCOUNT_NEW = DIR_DATA + "/accounts";
         NATIVE_LIB_DIR = ctx.getApplicationInfo().nativeLibraryDir;
+        
+        // Initialize the custom Turnip directory in internal storage
         TURNIP_DIR = ctx.getFilesDir().getAbsolutePath() + "/turnip";
     }
 
@@ -395,27 +401,18 @@ public final class Tools {
         
         String args = LauncherPreferences.PREF_CUSTOM_JAVA_ARGS;
         if(Tools.isValidString(minecraftProfile.javaArgs)) args = minecraftProfile.javaArgs;
-        FFmpegPlugin.discover(activity);
-
-        // --- TURNIP DRIVER INJECTION START ---
-        String selectedDriver = LauncherPreferences.DEFAULT_PREF.getString("chooseTurnipDriver", "default");
-        if (!"default".equals(selectedDriver)) {
-            File driverFile = new File(selectedDriver);
-            if (driverFile.exists()) {
-                // We add the driver path to a custom environment map that JREUtils will use
-                Map<String, String> customEnv = new java.util.HashMap<>();
-                customEnv.put("VK_ICD_FILENAMES", driverFile.getAbsolutePath());
-                // If JREUtils.launchJavaVM supports passing an environment map, use it. 
-                // Otherwise, you might need to set it via a native hook or specialized method.
-                Log.i("Amethyst", "Injecting Turnip Driver: " + driverFile.getAbsolutePath());
-                
-                // For now, we assume your JREUtils/native wrapper respects VK_ICD_FILENAMES
-                // In some Pojav forks, you'd add this to a process builder map.
-            }
+        
+        // Inject custom Turnip driver if selected
+        String turnipDriver = LauncherPreferences.DEFAULT_PREF.getString("chooseTurnipDriver", "default");
+        Map<String, String> env = new ArrayMap<>();
+        if (!turnipDriver.equals("default")) {
+            String driverPath = TURNIP_DIR + "/" + turnipDriver;
+            env.put("VK_ICD_FILENAMES", driverPath);
+            Log.i("TurnipDriver", "Forcing Vulkan driver: " + driverPath);
         }
-        // --- TURNIP DRIVER INJECTION END ---
 
-        JREUtils.launchJavaVM(activity, runtime, gamedir, javaArgList, args);
+        FFmpegPlugin.discover(activity);
+        JREUtils.launchJavaVM(activity, runtime, gamedir, javaArgList, args, env);
     }
     
     private static Logger.eventLogListener controllableMitigationLogListener;
@@ -485,7 +482,7 @@ public final class Tools {
             String TAG = "OldLegacy4JMitigation";
             Log.i(TAG, "Legacy4J detected!");
             oldL4JMitigationLogListener = loggedLine -> {
-                if (LauncherPreferences.PREF_GAMEPAD_SDL_PASSTHRU && loggedLine.contains("isn't supported in this system")) {
+                if (LauncherPreferences.PREF_GAMEPAD_SDL_PASSTHRU && loggedLine.contains("literal{SDL3 (isXander's libsdl4j)} isn't supported in this system. GLFW will be used instead.")) {
                     Log.i(TAG, "Old version of Legacy4J detected! Force enabling SDL");
                     Tools.SDL.initializeControllerSubsystems();
                     Tools.runOnUiThread(() -> {
@@ -715,17 +712,24 @@ public final class Tools {
         return libStr.toString();
     }
 
+    private final static boolean isClientFirst = false;
     public static String generateLaunchClassPath(JMinecraftVersionList.Version info, String actualname) {
         StringBuilder finalClasspath = new StringBuilder(); 
 
         String[] classpath = generateLibClasspath(info);
 
-        finalClasspath.append(getClientClasspath(actualname));
+        if (isClientFirst) {
+            finalClasspath.append(getClientClasspath(actualname));
+        }
         for (String jarFile : classpath) {
             if (!FileUtils.exists(jarFile)) {
+                Log.d(APP_NAME, "Ignored non-exists file: " + jarFile);
                 continue;
             }
-            finalClasspath.append(":").append(jarFile);
+            finalClasspath.append((isClientFirst ? ":" : "")).append(jarFile).append(!isClientFirst ? ":" : "");
+        }
+        if (!isClientFirst) {
+            finalClasspath.append(getClientClasspath(actualname));
         }
 
         return finalClasspath.toString();
@@ -787,9 +791,12 @@ public final class Tools {
             int width = dimensionView.getWidth();
             int height = dimensionView.getHeight();
             if(width != 0 && height != 0) {
+                Log.i("Tools", "Using dimension_tracker for display dimensions; W="+width+" H="+height);
                 CallbackBridge.physicalWidth = width;
                 CallbackBridge.physicalHeight = height;
                 return;
+            }else{
+                Log.e("Tools","Dimension tracker detected but dimensions out of date. Please check usage.", new Exception());
             }
         }
 
@@ -946,6 +953,7 @@ public final class Tools {
             String[] version = libItem.name.split(":")[2].split("\\.");
             if (libItem.name.startsWith("net.java.dev.jna:jna:")) {
                 if (Integer.parseInt(version[0]) >= 5 && Integer.parseInt(version[1]) >= 13) continue;
+                Log.d(APP_NAME, "Library " + libItem.name + " has been changed to version 5.13.0");
                 createLibraryInfo(libItem);
                 libItem.name = "net.java.dev.jna:jna:5.13.0";
                 libItem.downloads.artifact.path = "net/java/dev/jna/jna/5.13.0/jna-5.13.0.jar";
@@ -953,6 +961,7 @@ public final class Tools {
                 libItem.downloads.artifact.url = "https://repo1.maven.org/maven2/net/java/dev/jna/jna/5.13.0/jna-5.13.0.jar";
             } else if (libItem.name.startsWith("com.github.oshi:oshi-core:")) {
                 if (Integer.parseInt(version[0]) != 6 || Integer.parseInt(version[1]) != 2) continue;
+                Log.d(APP_NAME, "Library " + libItem.name + " has been changed to version 6.3.0");
                 createLibraryInfo(libItem);
                 libItem.name = "com.github.oshi:oshi-core:6.3.0";
                 libItem.downloads.artifact.path = "com/github/oshi/oshi-core/6.3.0/oshi-core-6.3.0.jar";
@@ -960,6 +969,7 @@ public final class Tools {
                 libItem.downloads.artifact.url = "https://repo1.maven.org/maven2/com/github/oshi/oshi-core/6.3.0/oshi-core-6.3.0.jar";
             } else if (libItem.name.startsWith("org.ow2.asm:asm-all:")) {
                 if(Integer.parseInt(version[0]) >= 5) continue;
+                Log.d(APP_NAME, "Library " + libItem.name + " has been changed to version 5.0.4");
                 createLibraryInfo(libItem);
                 libItem.name = "org.ow2.asm:asm-all:5.0.4";
                 libItem.url = null;
@@ -1004,7 +1014,7 @@ public final class Tools {
                 try{
                     inheritsVer = Tools.GLOBAL_GSON.fromJson(read(DIR_HOME_VERSION + "/" + customVer.inheritsFrom + "/" + customVer.inheritsFrom + ".json"), JMinecraftVersionList.Version.class);
                 }catch(IOException e) {
-                    throw new RuntimeException("Can't find source version for "+ versionName);
+                    throw new RuntimeException("Can't find the source version for "+ versionName +" (req version="+customVer.inheritsFrom+")");
                 }
                 insertSafety(inheritsVer, customVer,
                         "assetIndex", "assets", "id",
@@ -1021,6 +1031,10 @@ public final class Tools {
                         String inheritLibName = inheritLibrary.name.substring(0, inheritLibrary.name.lastIndexOf(":"));
 
                         if(libName.equals(inheritLibName)){
+                            Log.d(APP_NAME, "Library " + libName + ": Replaced version " +
+                                    libName.substring(libName.lastIndexOf(":") + 1) + " with " +
+                                    inheritLibName.substring(inheritLibName.lastIndexOf(":") + 1));
+
                             inheritLibraryList.remove(inheritLibrary);
                             continue outer_loop;
                         }
@@ -1138,6 +1152,11 @@ public final class Tools {
         Logger.appendToLog("Info: Graphics device: "+info.vendor+ " "+info.renderer+" (OpenGL ES "+info.glesMajorVersion+")");
     }
 
+    public interface DownloaderFeedback {
+        void updateProgress(int curr, int max);
+    }
+
+
     public static boolean compareSHA1(File f, String sourceSHA) {
         try {
             String sha1_dst;
@@ -1150,6 +1169,7 @@ public final class Tools {
                 return true; 
             }
         }catch (IOException e) {
+            Log.i("SHA1","Fake-matching a hash due to a read error",e);
             return true;
         }
     }
@@ -1192,6 +1212,7 @@ public final class Tools {
         try {
             return internalGetMaxContinuousAddressSpaceSize();
         }catch (Exception e){
+            Log.w("Tools", "Failed to find the largest uninterrupted address space");
             return -1;
         }
     }
@@ -1237,7 +1258,8 @@ public final class Tools {
         }
 
         if(!customJavaArgs){ 
-            if(!(activity instanceof LauncherActivity)) return;
+            if(!(activity instanceof LauncherActivity))
+                throw new IllegalStateException("Cannot start Mod Installer without LauncherActivity");
             LauncherActivity launcherActivity = (LauncherActivity)activity;
             launcherActivity.modInstallerLauncher.launch(null);
             return;
@@ -1351,11 +1373,12 @@ public final class Tools {
                 mimeType = URLConnection.guessContentTypeFromStream(bufferedInputStream);
             }
         }catch (IOException e) {
-            Log.w("FileMimeType", "Failed to determine MIME type", e);
+            Log.w("FileMimeType", "Failed to determine MIME type by stream", e);
         }
         if(mimeType != null) return mimeType;
         mimeType = URLConnection.guessContentTypeFromName(file.getName());
-        return mimeType != null ? mimeType : "*/*";
+        if(mimeType != null) return mimeType;
+        return "*/*";
     }
 
     public static void openPath(Context context, File file, boolean share) {
@@ -1364,7 +1387,7 @@ public final class Tools {
         Intent intent = new Intent();
         if(share) {
             intent.setAction(Intent.ACTION_SEND);
-            intent.setType(mimeType);
+            intent.setType(getMimeType(file));
             intent.putExtra(Intent.EXTRA_STREAM, contentUri);
         }else {
             intent.setAction(Intent.ACTION_VIEW);
@@ -1374,6 +1397,13 @@ public final class Tools {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         Intent chooserIntent = Intent.createChooser(intent, file.getName());
         context.startActivity(chooserIntent);
+    }
+
+    public static int mesureTextviewHeight(TextView t) {
+        int widthMeasureSpec = View.MeasureSpec.makeMeasureSpec(t.getWidth(), View.MeasureSpec.AT_MOST);
+        int heightMeasureSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        t.measure(widthMeasureSpec, heightMeasureSpec);
+        return t.getMeasuredHeight();
     }
 
     public static boolean deviceHasHangingLinker() {
@@ -1399,6 +1429,11 @@ public final class Tools {
         return false;
     }
 
+    public static <T> T getWeakReference(WeakReference<T> weakReference) {
+        if(weakReference == null) return null;
+        return weakReference.get();
+    }
+
     public static RenderersList getCompatibleRenderers(Context context) {
         if(sCompatibleRenderers != null) return sCompatibleRenderers;
         Resources resources = context.getResources();
@@ -1418,8 +1453,14 @@ public final class Tools {
             rendererIds.add(rendererId);
             rendererNames.add(defaultRendererNames[i]);
         }
-        sCompatibleRenderers = new RenderersList(rendererIds, rendererNames.toArray(new String[0]));
+        sCompatibleRenderers = new RenderersList(rendererIds,
+                rendererNames.toArray(new String[0]));
+
         return sCompatibleRenderers;
+    }
+
+    public static boolean checkRendererCompatible(Context context, String rendererName) {
+         return getCompatibleRenderers(context).rendererIds.contains(rendererName);
     }
 
     public static void releaseRenderersCache() {
@@ -1429,13 +1470,20 @@ public final class Tools {
 
     public static boolean deviceSupportsGyro(@NonNull Context context) {
         return ((SensorManager)context.getSystemService(Context.SENSOR_SERVICE)).getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE) != null;
+
     }
 
     public static void dialogForceClose(Context ctx) {
         new android.app.AlertDialog.Builder(ctx)
                 .setMessage(R.string.mcn_exit_confirm)
                 .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(android.R.string.ok, (p1, p2) -> Tools.fullyExit()).show();
+                .setPositiveButton(android.R.string.ok, (p1, p2) -> {
+                    try {
+                        Tools.fullyExit();
+                    } catch (Throwable th) {
+                        Log.w(Tools.APP_NAME, "Could not enable System.exit() method!", th);
+                    }
+                }).show();
     }
 
     public static void switchDemo(boolean isDemo){
@@ -1450,10 +1498,15 @@ public final class Tools {
         OBSOLETE_RESOURCES_PATH = DIR_GAME_NEW + "/resources";
     }
 
-    public static boolean isOnline(Context ctx) {
+    private static NetworkInfo getActiveNetworkInfo(Context ctx) {
         ConnectivityManager connMgr = (ConnectivityManager) ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo info = connMgr.getActiveNetworkInfo();
-        return info != null && info.isConnected();
+        return connMgr.getActiveNetworkInfo();
+    }
+
+    public static boolean isOnline(Context ctx) {
+        NetworkInfo info = getActiveNetworkInfo(ctx);
+        if(info == null) return false;
+        return (info.isConnected());
     }
 
     public static boolean isDemoProfile(Context ctx){
@@ -1461,9 +1514,19 @@ public final class Tools {
         return currentProfile != null && currentProfile.isDemo();
     }
 
+    public static boolean isLocalProfile(Context ctx){
+        MinecraftAccount currentProfile = PojavProfile.getCurrentProfileContent(ctx, null);
+        return currentProfile == null || currentProfile.isLocal();
+    }
+    public static boolean hasOnlineProfile(){
+        return true;
+    }
+
     public static void hasNoOnlineProfileDialog(Activity activity, @Nullable Runnable run, @Nullable String customTitle, @Nullable String customMessage){
         if (hasOnlineProfile() && !Tools.isDemoProfile(activity)){
-            if (run != null) run.run();
+            if (run != null) {
+                run.run();
+            }
         } else { 
             customTitle = customTitle == null ? activity.getString(R.string.no_minecraft_account_found) : customTitle;
             customMessage = customMessage == null ? activity.getString(R.string.feature_requires_java_account) : customMessage;
@@ -1471,20 +1534,58 @@ public final class Tools {
         }
     }
 
-    public static boolean hasOnlineProfile() { return true; }
+    public static void hasNoOnlineProfileDialog(Activity activity){
+        hasNoOnlineProfileDialog(activity, null, null, null);
+    }
+    public static void hasNoOnlineProfileDialog(Activity activity, Runnable run){
+        hasNoOnlineProfileDialog(activity, run, null, null);
+    }
+    public static void hasNoOnlineProfileDialog(Activity activity, String customTitle, String customMessage){
+        hasNoOnlineProfileDialog(activity, null, customTitle, customMessage);
+    }
 
     public static String getSelectedVanillaMcVer(){
         String selectedProfile = LauncherPreferences.DEFAULT_PREF.getString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, "");
         MinecraftProfile selected = LauncherProfiles.mainProfileJson.profiles.get(selectedProfile);
-        if (selected == null) throw new RuntimeException("No profile selected");
+        if (selected == null) {
+            throw new RuntimeException("No profile selected, how did you reach this? Go ask in the discord or github");
+        }
         String currentMCVersion = selected.lastVersionId;
+        String vanillaVersion = currentMCVersion;
+        File providedJsonFile = new File(Tools.DIR_HOME_VERSION + "/" + currentMCVersion + "/" + currentMCVersion + ".json");
+        JMinecraftVersionList.Version providedJsonVersion = null;
         try {
-            File providedJsonFile = new File(Tools.DIR_HOME_VERSION + "/" + currentMCVersion + "/" + currentMCVersion + ".json");
-            JMinecraftVersionList.Version providedJsonVersion = Tools.GLOBAL_GSON.fromJson(Tools.read(providedJsonFile.getAbsolutePath()), JMinecraftVersionList.Version.class);
-            return providedJsonVersion.inheritsFrom != null ? providedJsonVersion.inheritsFrom : currentMCVersion;
+            providedJsonVersion = Tools.GLOBAL_GSON.fromJson(Tools.read(providedJsonFile.getAbsolutePath()), JMinecraftVersionList.Version.class);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        try {
+            vanillaVersion = providedJsonVersion.inheritsFrom != null ? providedJsonVersion.inheritsFrom : vanillaVersion;
+        } catch (NullPointerException e) {
+            throw new RuntimeException(e);
+        }
+        return vanillaVersion;
+    }
+
+    public static Integer mcVersiontoInt(String mcVersion){
+        String[] sVersionArray = mcVersion.split("\\.");
+        String[] iVersionArray = new String[3];
+        for (int i = 0; i < iVersionArray.length; i++) {
+            try {
+                sVersionArray[i] =  String.format("%3s", sVersionArray[i]).replace(' ', '0');
+                sVersionArray[i] = sVersionArray[i].substring(sVersionArray[i].length() - 3);
+            } catch (ArrayIndexOutOfBoundsException ignored){
+                iVersionArray[i] = "000";
+                continue;
+            }
+            try {
+                Integer.parseInt(sVersionArray[i]);
+                iVersionArray[i] = sVersionArray[i];
+            } catch (NumberFormatException e) {
+                throw new RuntimeException("Tools(mcVersiontoInt): Invalid version string");
+            }
+        }
+        return Integer.parseInt(iVersionArray[0] + iVersionArray[1] + iVersionArray[2]);
     }
 
     public static boolean isPointerDeviceConnected() {
@@ -1493,10 +1594,25 @@ public final class Tools {
             InputDevice device = InputDevice.getDevice(id);
             if (device == null) continue;
             int sources = device.getSources();
-            if ((sources & InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE || (sources & InputDevice.SOURCE_TOUCHPAD) == InputDevice.SOURCE_TOUCHPAD) return true;
+            if ((sources & InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE
+                    || (sources & InputDevice.SOURCE_TOUCHPAD) == InputDevice.SOURCE_TOUCHPAD
+                    || (sources & InputDevice.SOURCE_TRACKBALL) == InputDevice.SOURCE_TRACKBALL) {
+                return true;
+            }
         }
         return false;
     }
 
-    static class SDL { public static native void initializeControllerSubsystems(); }
+    public static Object runMethodbyReflection(String className, String methodName) throws ReflectiveOperationException{
+        Class<?> clazz = Class.forName(className);
+        Method method = clazz.getDeclaredMethod(methodName);
+        method.setAccessible(true);
+        Object motionListener = method.invoke(null);
+        assert motionListener != null;
+        return motionListener;
+    }
+
+    static class SDL {
+        public static native void initializeControllerSubsystems();
+    }
 }
