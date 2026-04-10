@@ -36,12 +36,7 @@ jobs:
           repo: AngelAuraMC/angelauramc-openjdk-build
           branch: buildjre8
           name: jre8-pojav
-
-      - name: Patch files
-        run: |
-          patch ./Amemeyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/tasks/MinecraftDownloader.java ./Amemeyst-Android/MinecraftDownloader.patch
-          patch ./Amemeyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/Tools.java ./Amemeyst-Android/Tools.patch
-
+          
       - uses: gradle/actions/setup-gradle@v4
         with:
           validate-wrappers: false
