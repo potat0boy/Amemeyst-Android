@@ -14,7 +14,6 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     env:
-      GPLAY_KEYSTORE_PASSWORD: ${{ secrets.GPLAY_KEYSTORE_PASSWORD }}
       CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
     steps:
       - name: Checkout
@@ -38,42 +37,10 @@ jobs:
           branch: buildjre8
           name: jre8-pojav
 
-      # - name: Get JRE17
-      #   uses: dawidd6/action-download-artifact@v9
-      #   with:
-      #     workflow: build.yml
-      #     path: app_pojavlauncher/src/main/assets/components/jre-new
-      #     workflow_conclusion: completed
-      #     repo: AngelAuraMC/angelauramc-openjdk-build
-      #     branch: buildjre17-21
-      #     name: jre17-pojav
-      #
-      # - name: Get JRE21
-      #   uses: dawidd6/action-download-artifact@v9
-      #   with:
-      #     workflow: build.yml
-      #     path: app_pojavlauncher/src/main/assets/components/jre-21
-      #     workflow_conclusion: completed
-      #     repo: AngelAuraMC/angelauramc-openjdk-build
-      #     branch: buildjre17-21
-      #     name: jre21-pojav
-      #
-      # - name: Get JRE25
-      #   uses: dawidd6/action-download-artifact@v9
-      #   with:
-      #     workflow: build.yml
-      #     path: app_pojavlauncher/src/main/assets/components/jre-25
-      #     workflow_conclusion: completed
-      #     repo: FCL-Team/Android-OpenJDK-Build
-      #     branch: Build_JRE_25
-      #     name: jre25-multiarch
-
-      
       - name: Patch files
         run: |
           patch ./Amethyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/tasks/MinecraftDownloader.java ./Amethyst-Android/MinecraftDownloader.patch
           patch ./Amethyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/Tools.java ./Amethyst-Android/Tools.patch
-
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -82,33 +49,33 @@ jobs:
 
       - name: Run scripts
         run: |
+          chmod +x scripts/languagelist_updater.sh
           ./scripts/languagelist_updater.sh
           mkdir out
 
-      - name: Build Release .apk
+      - name: Build Release APK
         run: |
-          # Build the launcher
-          gradle :app_pojavlauncher:assembleRelease
+          # Passing the password secret directly to gradle so it can sign the APK
+          ./gradlew :app_pojavlauncher:assembleRelease \
+            -Pandroid.injected.signing.store.password=${{ secrets.GPLAY_KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.GPLAY_KEYSTORE_PASSWORD }} \
+            --no-daemon -x lint
           mv app_pojavlauncher/build/outputs/apk/release/app_pojavlauncher-release.apk out/app-release.apk
 
-      - name: Gen md5sums
+      - name: Build Debug APK
         run: |
-          md5sum out/app-release.apk > out/app-release.md5
-
-      - name: Build Debug .apk
-        run: |
-          # Build the launcher
-          gradle :app_pojavlauncher:assembleDebug
+          ./gradlew :app_pojavlauncher:assembleDebug --no-daemon -x lint
           mv app_pojavlauncher/build/outputs/apk/debug/app_pojavlauncher-debug.apk out/app-debug.apk
 
       - name: Gen md5sums
         run: |
+          md5sum out/app-release.apk > out/app-release.md5
           md5sum out/app-debug.apk > out/app-debug.md5
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug (recommended)
+          name: app-debug-recommended
           path: out/app-debug.*
 
       - name: Upload release APK
