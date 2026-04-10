@@ -27,12 +27,6 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      # JRE download steps remain the same to ensure the app actually runs
-      - name: Get JREs
-        run: |
-          echo "Fetching JRE artifacts..."
-        # (Keeping your existing dawidd6/action-download-artifact steps here is fine)
-
       - name: Get JRE 8
         uses: dawidd6/action-download-artifact@v9
         with:
@@ -43,53 +37,20 @@ jobs:
           branch: buildjre8
           name: jre8-pojav
 
-      - name: Get JRE17
-        uses: dawidd6/action-download-artifact@v9
-        with:
-          workflow: build.yml
-          path: app_pojavlauncher/src/main/assets/components/jre-new
-          workflow_conclusion: completed
-          repo: AngelAuraMC/angelauramc-openjdk-build
-          branch: buildjre17-21
-          name: jre17-pojav
-
-      - name: Get JRE21
-        uses: dawidd6/action-download-artifact@v9
-        with:
-          workflow: build.yml
-          path: app_pojavlauncher/src/main/assets/components/jre-21
-          workflow_conclusion: completed
-          repo: AngelAuraMC/angelauramc-openjdk-build
-          branch: buildjre17-21
-          name: jre21-pojav
-
-      - name: Get JRE25
-        uses: dawidd6/action-download-artifact@v9
-        with:
-          workflow: build.yml
-          path: app_pojavlauncher/src/main/assets/components/jre-25
-          workflow_conclusion: completed
-          repo: FCL-Team/Android-OpenJDK-Build
-          branch: Build_JRE_25
-          name: jre25-multiarch
-
       - uses: gradle/actions/setup-gradle@v4
         with:
           validate-wrappers: false
           gradle-version: "8.11"
 
-      - name: Build JRE JAR files
+      - name: Run scripts
         run: |
           chmod +x scripts/languagelist_updater.sh
           ./scripts/languagelist_updater.sh
           mkdir out
-          ./gradlew :jre_lwjgl3glfw:build --no-daemon -x lint
 
-      - name: Build Debug APK
+      - name: Build Debug .apk
         run: |
-
-          # -x lint skips the translation errors that were killing your build
-
+          # Only building debug to avoid keystore/signing headaches
           ./gradlew :app_pojavlauncher:assembleDebug --no-daemon -x lint
           mv app_pojavlauncher/build/outputs/apk/debug/app_pojavlauncher-debug.apk out/app-debug.apk
 
@@ -97,7 +58,7 @@ jobs:
         run: |
           md5sum out/app-debug.apk > out/app-debug.md5
 
-      - name: Upload APK Artifact
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-build
