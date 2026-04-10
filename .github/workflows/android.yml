@@ -68,6 +68,13 @@ jobs:
       #     branch: Build_JRE_25
       #     name: jre25-multiarch
 
+      
+      - name: Patch files
+        run: |
+          patch ./Amethyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/tasks/MinecraftDownloader.java ./Amethyst-Android/MinecraftDownloader.patch
+          patch ./Amethyst-Android/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/Tools.java ./Amethyst-Android/Tools.patch
+
+
       - uses: gradle/actions/setup-gradle@v4
         with:
           validate-wrappers: false
